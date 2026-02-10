@@ -1,8 +1,25 @@
-import axios, { AxiosInstance } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PHOTON_API_URL = 'https://photonai.io/api';
 const PHOTON_API_KEY = 'e0aa83e41f56a39f74c54058a42d239d83d6c36d31e83f40c5c071db8bf55e99';
+
+// Simple fetch wrapper
+async function apiFetch<T>(endpoint: string): Promise<T> {
+  const response = await fetch(`${PHOTON_API_URL}${endpoint}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${PHOTON_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Request failed' }));
+    throw new Error(error.message || `HTTP ${response.status}`);
+  }
+  
+  return response.json();
+}
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -155,24 +172,10 @@ export interface ScoreHistoryEntry {
 }
 
 class PhotonApiService {
-  private client: AxiosInstance;
-
-  constructor() {
-    this.client = axios.create({
-      baseURL: PHOTON_API_URL,
-      headers: {
-        'Authorization': `Bearer ${PHOTON_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: 30000,
-    });
-  }
-
   // Fetch score from API
   async fetchScore(walletAddress: string): Promise<PhotonScoreData> {
     try {
-      const response = await this.client.get<PhotonScoreResponse>(`/score/${walletAddress}`);
-      const data = response.data;
+      const data = await apiFetch<PhotonScoreResponse>(`/score/${walletAddress}`);
       
       const ficoScore = data.credit_summary.scores.fico_equivalent;
       const tierInfo = calculateTier(ficoScore);
@@ -199,16 +202,15 @@ class PhotonApiService {
 
       return scoreData;
     } catch (error: any) {
-      console.error('Error fetching Photon score:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Failed to fetch score');
+      console.error('Error fetching Photon score:', error.message);
+      throw new Error(error.message || 'Failed to fetch score');
     }
   }
 
   // Fetch crypto profile from API
   async fetchCryptoProfile(walletAddress: string): Promise<CryptoProfileData> {
     try {
-      const response = await this.client.get<CryptoProfileResponse>(`/crypto-profile/${walletAddress}`);
-      const data = response.data;
+      const data = await apiFetch<CryptoProfileResponse>(`/crypto-profile/${walletAddress}`);
 
       const profileData: CryptoProfileData = {
         wallet_address: walletAddress,
@@ -251,8 +253,8 @@ class PhotonApiService {
 
       return profileData;
     } catch (error: any) {
-      console.error('Error fetching crypto profile:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Failed to fetch crypto profile');
+      console.error('Error fetching crypto profile:', error.message);
+      throw new Error(error.message || 'Failed to fetch crypto profile');
     }
   }
 
