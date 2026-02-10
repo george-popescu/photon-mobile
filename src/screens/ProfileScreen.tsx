@@ -1,25 +1,72 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity,
+  Alert,
+  Linking,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { usePhoton } from '../context/PhotonContext';
 
-const mockUser = {
-  wallet: '0xe27c...1e19b4',
-  fullWallet: '0xe27c3df26c8b0f2338952b193ba5ea505d1e19b4',
-  email: 'user@example.com',
-  memberSince: '2026-01-15',
-};
+interface MenuItemProps {
+  icon: string;
+  label: string;
+  sublabel?: string;
+  onPress: () => void;
+  danger?: boolean;
+}
 
-const menuItems = [
-  { icon: '👛', label: 'Connected Wallets', value: '1 wallet' },
-  { icon: '🔔', label: 'Notifications', value: 'On' },
-  { icon: '🌙', label: 'Dark Mode', value: 'On' },
-  { icon: '🔐', label: 'Security', value: '' },
-  { icon: '📄', label: 'Export Report', value: '' },
-  { icon: '❓', label: 'Help & Support', value: '' },
-  { icon: 'ℹ️', label: 'About', value: 'v1.0.0' },
-];
+const MenuItem = ({ icon, label, sublabel, onPress, danger }: MenuItemProps) => (
+  <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+    <Text style={styles.menuIcon}>{icon}</Text>
+    <View style={styles.menuContent}>
+      <Text style={[styles.menuLabel, danger && styles.menuLabelDanger]}>{label}</Text>
+      {sublabel && <Text style={styles.menuSublabel}>{sublabel}</Text>}
+    </View>
+    <Text style={styles.menuArrow}>›</Text>
+  </TouchableOpacity>
+);
 
 export default function ProfileScreen() {
+  const { walletAddress, score, profile, clearWallet, refreshAll, history } = usePhoton();
+
+  const handleDisconnect = () => {
+    Alert.alert(
+      'Disconnect Wallet',
+      'This will remove your wallet and all cached data. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Disconnect', 
+          style: 'destructive',
+          onPress: clearWallet,
+        },
+      ]
+    );
+  };
+
+  const handleViewOnExplorer = () => {
+    if (walletAddress) {
+      // Default to Etherscan, but could detect chain
+      Linking.openURL(`https://etherscan.io/address/${walletAddress}`);
+    }
+  };
+
+  const handleContactSupport = () => {
+    Linking.openURL('mailto:support@photonai.io?subject=Photon Mobile Support');
+  };
+
+  const handlePrivacyPolicy = () => {
+    Linking.openURL('https://photonai.io/privacy');
+  };
+
+  const handleTerms = () => {
+    Linking.openURL('https://photonai.io/terms');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -27,47 +74,125 @@ export default function ProfileScreen() {
           <Text style={styles.title}>Profile</Text>
         </View>
 
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>👤</Text>
+        {/* Wallet Card */}
+        <View style={styles.walletCard}>
+          <View style={styles.walletIcon}>
+            <Text style={styles.walletIconText}>
+              {walletAddress ? '🔗' : '👤'}
+            </Text>
           </View>
-          <Text style={styles.walletAddress}>{mockUser.wallet}</Text>
-          <Text style={styles.memberSince}>
-            Member since {new Date(mockUser.memberSince).toLocaleDateString('en-US', { 
-              month: 'long', 
-              year: 'numeric' 
-            })}
-          </Text>
-          <TouchableOpacity style={styles.copyButton}>
-            <Text style={styles.copyButtonText}>📋 Copy Full Address</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Menu Items */}
-        <View style={styles.section}>
-          <View style={styles.menuCard}>
-            {menuItems.map((item, idx) => (
-              <TouchableOpacity key={idx} style={styles.menuItem}>
-                <Text style={styles.menuIcon}>{item.icon}</Text>
-                <Text style={styles.menuLabel}>{item.label}</Text>
-                <Text style={styles.menuValue}>{item.value}</Text>
-                <Text style={styles.menuArrow}>›</Text>
+          {walletAddress ? (
+            <>
+              <Text style={styles.walletLabel}>Connected Wallet</Text>
+              <Text style={styles.walletAddress}>
+                {walletAddress.slice(0, 10)}...{walletAddress.slice(-8)}
+              </Text>
+              <TouchableOpacity 
+                style={styles.viewExplorerButton}
+                onPress={handleViewOnExplorer}
+              >
+                <Text style={styles.viewExplorerText}>View on Explorer ↗</Text>
               </TouchableOpacity>
-            ))}
+            </>
+          ) : (
+            <>
+              <Text style={styles.walletLabel}>No Wallet Connected</Text>
+              <Text style={styles.noWalletHint}>
+                Go to Home to connect your wallet
+              </Text>
+            </>
+          )}
+        </View>
+
+        {/* Stats */}
+        {walletAddress && (
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{score?.fico_score || '—'}</Text>
+              <Text style={styles.statLabel}>FICO Score</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>
+                {profile?.chains.filter(c => c.value_usd > 0).length || '—'}
+              </Text>
+              <Text style={styles.statLabel}>Chains</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{history.length}</Text>
+              <Text style={styles.statLabel}>Checks</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Account Section */}
+        {walletAddress && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account</Text>
+            <View style={styles.menuCard}>
+              <MenuItem
+                icon="🔄"
+                label="Refresh Data"
+                sublabel="Update score and portfolio"
+                onPress={refreshAll}
+              />
+              <MenuItem
+                icon="🔗"
+                label="Change Wallet"
+                sublabel="Connect a different address"
+                onPress={() => Alert.alert('Coming Soon', 'Multi-wallet support coming soon!')}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* About Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>About</Text>
+          <View style={styles.menuCard}>
+            <MenuItem
+              icon="📧"
+              label="Contact Support"
+              onPress={handleContactSupport}
+            />
+            <MenuItem
+              icon="📜"
+              label="Privacy Policy"
+              onPress={handlePrivacyPolicy}
+            />
+            <MenuItem
+              icon="📋"
+              label="Terms of Service"
+              onPress={handleTerms}
+            />
+            <MenuItem
+              icon="ℹ️"
+              label="About Photon"
+              sublabel="AI-powered blockchain credit scoring"
+              onPress={() => Linking.openURL('https://photonai.io')}
+            />
           </View>
         </View>
 
-        {/* Logout */}
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.logoutButton}>
-            <Text style={styles.logoutText}>🚪 Disconnect Wallet</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Danger Zone */}
+        {walletAddress && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Danger Zone</Text>
+            <View style={styles.menuCard}>
+              <MenuItem
+                icon="🚪"
+                label="Disconnect Wallet"
+                sublabel="Remove wallet and clear data"
+                onPress={handleDisconnect}
+                danger
+              />
+            </View>
+          </View>
+        )}
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Photon AI</Text>
-          <Text style={styles.footerVersion}>Version 1.0.0</Text>
+        {/* Version */}
+        <View style={styles.versionContainer}>
+          <Text style={styles.versionText}>Photon Mobile v1.0.0</Text>
+          <Text style={styles.copyrightText}>© 2026 Photon AI</Text>
         </View>
 
         <View style={{ height: 40 }} />
@@ -91,7 +216,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  profileCard: {
+  walletCard: {
     margin: 20,
     padding: 24,
     backgroundColor: '#18181B',
@@ -100,43 +225,81 @@ const styles = StyleSheet.create({
     borderColor: '#27272A',
     alignItems: 'center',
   },
-  avatar: {
+  walletIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#8B5CF620',
+    backgroundColor: '#27272A',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
-  avatarText: {
-    fontSize: 40,
+  walletIconText: {
+    fontSize: 36,
   },
-  walletAddress: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    fontFamily: 'monospace',
-  },
-  memberSince: {
+  walletLabel: {
     fontSize: 14,
     color: '#71717A',
-    marginTop: 8,
+    marginBottom: 8,
   },
-  copyButton: {
-    marginTop: 16,
+  walletAddress: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontFamily: 'monospace',
+    marginBottom: 16,
+  },
+  noWalletHint: {
+    fontSize: 14,
+    color: '#52525B',
+    textAlign: 'center',
+  },
+  viewExplorerButton: {
+    backgroundColor: '#27272A',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#27272A',
     borderRadius: 8,
   },
-  copyButtonText: {
+  viewExplorerText: {
     fontSize: 14,
-    color: '#A1A1AA',
+    color: '#8B5CF6',
+    fontWeight: '600',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 24,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#18181B',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#71717A',
   },
   section: {
     paddingHorizontal: 20,
     marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#71717A',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   menuCard: {
     backgroundColor: '#18181B',
@@ -153,46 +316,40 @@ const styles = StyleSheet.create({
     borderBottomColor: '#27272A',
   },
   menuIcon: {
-    fontSize: 20,
-    marginRight: 12,
+    fontSize: 24,
+    marginRight: 16,
+  },
+  menuContent: {
+    flex: 1,
   },
   menuLabel: {
-    flex: 1,
     fontSize: 16,
-    color: '#E4E4E7',
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
-  menuValue: {
-    fontSize: 14,
-    color: '#71717A',
-    marginRight: 8,
-  },
-  menuArrow: {
-    fontSize: 20,
-    color: '#71717A',
-  },
-  logoutButton: {
-    backgroundColor: '#EF444420',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
+  menuLabelDanger: {
     color: '#EF4444',
   },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  footerText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#71717A',
-  },
-  footerVersion: {
+  menuSublabel: {
     fontSize: 12,
+    color: '#71717A',
+    marginTop: 2,
+  },
+  menuArrow: {
+    fontSize: 24,
     color: '#52525B',
-    marginTop: 4,
+  },
+  versionContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  versionText: {
+    fontSize: 14,
+    color: '#52525B',
+    marginBottom: 4,
+  },
+  copyrightText: {
+    fontSize: 12,
+    color: '#3F3F46',
   },
 });
