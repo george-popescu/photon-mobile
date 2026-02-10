@@ -11,49 +11,32 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import { usePhoton } from '../context/PhotonContext';
 
 const { width } = Dimensions.get('window');
 
-// Score Gauge Component
+// Simple Score Display (no SVG for now)
 const ScoreGauge = ({ score, tier, tierColor }: { score: number; tier: string; tierColor: string }) => {
-  const percentage = Math.max(0, Math.min(100, ((score - 300) / 550) * 100));
-  const radius = 100;
-  const strokeWidth = 16;
-  const circumference = Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - percentage / 100);
-
   return (
     <View style={styles.gaugeContainer}>
-      <Svg width="240" height="140" viewBox="0 0 240 140">
-        {/* Background arc */}
-        <Path
-          d="M 20 120 A 100 100 0 0 1 220 120"
-          fill="none"
-          stroke="#27272A"
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-        />
-        {/* Score arc */}
-        <Path
-          d="M 20 120 A 100 100 0 0 1 220 120"
-          fill="none"
-          stroke={tierColor}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={[circumference, circumference]}
-          strokeDashoffset={strokeDashoffset}
-        />
-        {/* Labels */}
-        <SvgText x={20} y={135} fill="#71717A" fontSize={12}>300</SvgText>
-        <SvgText x={205} y={135} fill="#71717A" fontSize={12}>850</SvgText>
-      </Svg>
-      <View style={styles.gaugeCenter}>
-        <Text style={styles.gaugeScore}>{score}</Text>
-        <View style={[styles.tierBadge, { backgroundColor: tierColor + '30' }]}>
-          <Text style={[styles.tierText, { color: tierColor }]}>{tier}</Text>
+      <Text style={styles.gaugeScore}>{score}</Text>
+      <View style={[styles.tierBadge, { backgroundColor: tierColor + '30' }]}>
+        <Text style={[styles.tierText, { color: tierColor }]}>{tier}</Text>
+      </View>
+      <View style={styles.scoreRange}>
+        <Text style={styles.scoreRangeText}>300</Text>
+        <View style={[styles.scoreBar, { backgroundColor: '#27272A' }]}>
+          <View 
+            style={[
+              styles.scoreBarFill, 
+              { 
+                width: `${Math.max(0, Math.min(100, ((score - 300) / 550) * 100))}%`,
+                backgroundColor: tierColor 
+              }
+            ]} 
+          />
         </View>
+        <Text style={styles.scoreRangeText}>850</Text>
       </View>
     </View>
   );
@@ -118,30 +101,14 @@ export default function HomeScreen() {
     clearWallet,
   } = usePhoton();
 
-  const handleAddWallet = () => {
-    // For demo, use a test wallet address
-    Alert.prompt(
-      'Enter Wallet Address',
-      'Enter your blockchain wallet address (e.g., 0x...)',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Add', 
-          onPress: async (address) => {
-            if (address && address.length > 10) {
-              try {
-                await setWallet(address);
-              } catch (err) {
-                // Error is handled by context
-              }
-            }
-          }
-        },
-      ],
-      'plain-text',
-      // Demo address
-      '0x1234567890abcdef1234567890abcdef12345678'
-    );
+  const handleAddWallet = async () => {
+    // For demo, use a test wallet address directly
+    const demoAddress = '0x1234567890abcdef1234567890abcdef12345678';
+    try {
+      await setWallet(demoAddress);
+    } catch (err) {
+      // Error is handled by context
+    }
   };
 
   const getGreeting = () => {
@@ -375,12 +342,29 @@ const styles = StyleSheet.create({
   gaugeContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: 160,
+    paddingVertical: 20,
   },
-  gaugeCenter: {
-    position: 'absolute',
+  scoreRange: {
+    flexDirection: 'row',
     alignItems: 'center',
-    top: 50,
+    width: '100%',
+    marginTop: 16,
+  },
+  scoreRangeText: {
+    fontSize: 12,
+    color: '#71717A',
+    width: 30,
+  },
+  scoreBar: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 8,
+    overflow: 'hidden',
+  },
+  scoreBarFill: {
+    height: '100%',
+    borderRadius: 4,
   },
   gaugeScore: {
     fontSize: 48,
