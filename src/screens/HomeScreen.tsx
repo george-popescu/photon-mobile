@@ -26,7 +26,7 @@ const ScoreGauge = ({ score, tier, tierColor }: { score: number; tier: string; t
 
   return (
     <View style={styles.gaugeContainer}>
-      <Svg width={240} height={140} viewBox="0 0 240 140">
+      <Svg width="240" height="140" viewBox="0 0 240 140">
         {/* Background arc */}
         <Path
           d="M 20 120 A 100 100 0 0 1 220 120"
@@ -42,12 +42,12 @@ const ScoreGauge = ({ score, tier, tierColor }: { score: number; tier: string; t
           stroke={tierColor}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
-          strokeDasharray={`${circumference}`}
+          strokeDasharray={[circumference, circumference]}
           strokeDashoffset={strokeDashoffset}
         />
         {/* Labels */}
-        <SvgText x="20" y="135" fill="#71717A" fontSize="12">300</SvgText>
-        <SvgText x="205" y="135" fill="#71717A" fontSize="12">850</SvgText>
+        <SvgText x={20} y={135} fill="#71717A" fontSize={12}>300</SvgText>
+        <SvgText x={205} y={135} fill="#71717A" fontSize={12}>850</SvgText>
       </Svg>
       <View style={styles.gaugeCenter}>
         <Text style={styles.gaugeScore}>{score}</Text>
